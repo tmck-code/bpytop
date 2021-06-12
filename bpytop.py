@@ -1967,6 +1967,7 @@ class CpuBox(Box, SubBox):
         if cpu.cpu_freq:
             freq: str = f'{cpu.cpu_freq} Mhz' if cpu.cpu_freq < 1000 else f'{float(cpu.cpu_freq / 1000):.1f} GHz'
             out += f'{Mv.to(by - 1, bx + bw - 9)}{THEME.div_line(Symbol.title_left)}{Fx.b}{THEME.title(freq)}{Fx.ub}{THEME.div_line(Symbol.title_right)}'
+        errlog.error(cpu.cpu_upper)
         out += f'{Mv.to(y, x)}{Graphs.cpu["up"](None if cls.resized else cpu.cpu_upper[-1])}'
         if mid_line:
             out += (f'{Mv.to(y+hh, x-1)}{THEME.cpu_box(Symbol.title_right)}{THEME.div_line}{Symbol.h_line * (w - bw - 3)}{THEME.div_line(Symbol.title_left)}'
@@ -2128,6 +2129,8 @@ class MemBox(Box):
 
     @classmethod
     def _draw_fg(cls):
+        # TODO: disable mem
+        return
         if not "mem" in cls.boxes: return
         mem = MemCollector
         if mem.redraw: cls.redraw = True
@@ -2985,7 +2988,9 @@ class Collector:
         cls.only_draw = only_draw
 
         if collectors:
-            cls.collect_queue = [*collectors]
+            # TODO: disable all collectors except cpu
+            # cls.collect_queue = [*collectors]
+            cls.collect_queue = [CpuCollector]
             cls.use_draw_list = True
             if ProcCollector in cls.collect_queue:
                 cls.proc_counter = 1
@@ -3063,7 +3068,7 @@ class CpuCollector(Collector):
         if len(cls.cpu_usage[0]) > Term.width * 4:
             del cls.cpu_usage[0][0]
 
-                # TODO: cpu_times_percent
+        # TODO: cpu_times_percent
         # cpu_times_percent = cls.Provider.cpu_times_percent()
         # for x in ["upper", "lower"]:
         #     if getattr(CONFIG, "cpu_graph_" + x) == "total":
@@ -3072,6 +3077,14 @@ class CpuCollector(Collector):
         #         getattr(cls, "cpu_" + x).append(ceil(getattr(cpu_times_percent, getattr(CONFIG, "cpu_graph_" + x))))
         #     if len(getattr(cls, "cpu_" + x)) > Term.width * 4:
         #         del getattr(cls, "cpu_" + x)[0]
+        cpu_percent = TermuxHardwareStats.cpu_percent()
+        for x in ["upper", "lower"]:
+            if getattr(CONFIG, "cpu_graph_" + x) == "total":
+                setattr(cls, "cpu_" + x, cls.cpu_usage[0])
+            else:
+                getattr(cls, "cpu_" + x).append(ceil(sum(el['BusyPercentage'] for el in cpu_percent)))
+            if len(getattr(cls, "cpu_" + x)) > Term.width * 4:
+                del getattr(cls, "cpu_" + x)[0]
 
         for n, thread in enumerate(TermuxHardwareStats.cpu_percent(), start=1):
             cls.cpu_usage[n].append(ceil(thread))
@@ -4890,9 +4903,9 @@ class Menu:
                         else:
                             CpuCollector.sensor_method = ""
                             CpuCollector.got_sensors = False
-                    if selected in ["net_auto", "net_color_fixed", "net_sync"]:
-                        if selected == "net_auto": NetCollector.auto_min = CONFIG.net_auto
-                        NetBox.redraw = True
+                    # if selected in ["net_auto", "net_color_fixed", "net_sync"]:
+                    #     if selected == "net_auto": NetCollector.auto_min = CONFIG.net_auto
+                    #     NetBox.redraw = True
                     if selected == "theme_background":
                         Term.bg = f'{THEME.main_bg}' if CONFIG.theme_background else "\033[49m"
                         Draw.now(Term.bg)
@@ -5543,7 +5556,9 @@ def process_keys():
                 NetCollector.net_min = {"download" : -1, "upload" : -1}
                 Collector.collect(NetCollector, redraw=True)
 
-        if "mem" in Box.boxes:
+        # TODO: disable memory
+        # if "mem" in Box.boxes:
+        if "mem" in Box.boxes and False:
             if key == "g":
                 CONFIG.mem_graphs = not CONFIG.mem_graphs
                 Collector.collect(MemCollector, interrupt=True, redraw=True)
