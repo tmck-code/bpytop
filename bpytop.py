@@ -34,14 +34,14 @@ from statistics import mean
 
 errors: List[str] = []
 try: import fcntl, termios, tty, pwd
-except Exception as e: errors.append(f'{e}')
+except Exception as e: raise e # errors.append(f'{e}')
 
 # TODO: remove psutil as dependency
 # it tries to load non-existent files on import so is unavoidable
 # try: import psutil # type: ignore
 # except Exception as e: errors.append(f'{e}')
 
-from termux_hardware_stats.termux_hardware_stats import termux_cpu, termux_mem
+from termux_hardware_stats.stats import termux_cpu, termux_mem, termux_temp
 
 SELF_START = time()
 
@@ -267,8 +267,8 @@ else:
             break
 USER_THEME_DIR: str = f'{CONFIG_DIR}/themes'
 
-CORES: int = termux_cpu.cpu_count(logical=False) or 1
-THREADS: int = termux_cpu.cpu_count(logical=True) or 1
+CORES: int = termux_cpu.cpu_count() or 1
+THREADS: int = termux_cpu.cpu_count() or 1
 
 THREAD_ERROR: int = 0
 
@@ -561,6 +561,7 @@ class Config:
                         new_config[key] = str(line)
         except Exception as e:
             errlog.exception(str(e))
+            raise e
         if "proc_sorting" in new_config and not new_config["proc_sorting"] in self.sorting_options:
             new_config["proc_sorting"] = "_error_"
             self.warnings.append(f'Config key "proc_sorted" didn\'t get an acceptable value!')
@@ -599,6 +600,7 @@ class Config:
                 f.write(DEFAULT_CONF.substitute(self.conf_dict))
         except Exception as e:
             errlog.exception(str(e))
+            raise e
 
 try:
     CONFIG: Config = Config(CONFIG_FILE)
@@ -622,6 +624,7 @@ try:
         CONFIG.warnings = []
 except Exception as e:
     errlog.exception(f'{e}')
+    raise e
     raise SystemExit(1)
 
 if ARG_BOXES:
@@ -3107,11 +3110,13 @@ class CpuCollector(Collector):
         # cls.load_avg = [round(lavg, 2) for lavg in psutil.getloadavg()]
         # cls.uptime = str(timedelta(seconds=round(time()-psutil.boot_time(),0)))[:-3].replace(" days,", "d").replace(" day,", "d")
 
-        if CONFIG.check_temp and cls.got_sensors:
-            cls._collect_temps()
+        cls._collect_temps()
+        # if CONFIG.check_temp:# and cls.got_sensors:
+        #     cls._collect_temps()
 
     @classmethod
     def _collect_temps(cls):
+        errlog.error('collecting temps')
         temp: int = 1000
         cores: List[int] = []
         core_dict: Dict[int, int] = {}
@@ -3121,79 +3126,33 @@ class CpuCollector(Collector):
         s_name: str = "_-_"
         s_label: str = "_-_"
         if cls.sensor_method == "psutil":
+            errlog.error('collecting temps')
             try:
                 if CONFIG.cpu_sensor != "Auto":
                     s_name, s_label = CONFIG.cpu_sensor.split(":", 1)
                 # TODO: psutil section
-                # for name, entries in psutil.sensors_temperatures().items():
-                #     for num, entry in enumerate(entries, 1):
-                #         if name == s_name and (entry.label == s_label or str(num) == s_label):
-                #             if entry.label.startswith("Package"):
-                #                 cpu_type = "intel"
-                #             elif entry.label.startswith("Tdie"):
-                #                 cpu_type = "ryzen"
-                #             else:
-                #                 cpu_type = "other"
-                #             if getattr(entry, "high", None) != None and entry.high > 1: cls.cpu_temp_high = round(entry.high)
-                #             else: cls.cpu_temp_high = 80
-                #             if getattr(entry, "critical", None) != None and entry.critical > 1: cls.cpu_temp_crit = round(entry.critical)
-                #             else: cls.cpu_temp_crit = 95
-                #             temp = round(entry.current)
-                #         elif entry.label.startswith(("Package", "Tdie")) and cpu_type in ["", "other"] and s_name == "_-_" and hasattr(entry, "current"):
-                #             if not cls.cpu_temp_high or cls.sensor_swap or cpu_type == "other":
-                #                 cls.sensor_swap = False
-                #                 if getattr(entry, "high", None) != None and entry.high > 1: cls.cpu_temp_high = round(entry.high)
-                #                 else: cls.cpu_temp_high = 80
-                #                 if getattr(entry, "critical", None) != None and entry.critical > 1: cls.cpu_temp_crit = round(entry.critical)
-                #                 else: cls.cpu_temp_crit = 95
-                #             cpu_type = "intel" if entry.label.startswith("Package") else "ryzen"
-                #             temp = round(entry.current)
-                #         elif (entry.label.startswith(("Core", "Tccd", "CPU")) or (name.lower().startswith("cpu") and not entry.label)) and hasattr(entry, "current"):
-                #             if entry.label.startswith(("Core", "Tccd")):
-                #                 entry_int = int(entry.label.replace("Core", "").replace("Tccd", ""))
-                #                 if entry_int in core_dict and cpu_type != "ryzen":
-                #                     if c_max == 0:
-                #                         c_max = max(core_dict) + 1
-                #                     if c_max < THREADS // 2 and (entry_int + c_max) not in core_dict:
-                #                         core_dict[(entry_int + c_max)] = round(entry.current)
-                #                     continue
-                #                 elif entry_int in core_dict:
-                #                     continue
-                #                 core_dict[entry_int] = round(entry.current)
-                #                 continue
-                #             elif cpu_type in ["intel", "ryzen"]:
-                #                 continue
-                #             if not cpu_type:
-                #                 cpu_type = "other"
-                #                 if not cls.cpu_temp_high or cls.sensor_swap:
-                #                     cls.sensor_swap = False
-                #                     if getattr(entry, "high", None) != None and entry.high > 1: cls.cpu_temp_high = round(entry.high)
-                #                     else: cls.cpu_temp_high = 60 if name == "cpu_thermal" else 80
-                #                     if getattr(entry, "critical", None) != None and entry.critical > 1: cls.cpu_temp_crit = round(entry.critical)
-                #                     else: cls.cpu_temp_crit = 80 if name == "cpu_thermal" else 95
-                #                 temp = round(entry.current)
-                #             cores.append(round(entry.current))
+                for name, temp_data in termux_temp.items():
+                    cpu_type = "other"
+                    cls.cpu_temp_high = 80
+                    cls.cpu_temp_crit = 95
+                    temp = temp_data
+                    if name.startswith('cpu-'):
+                        if entry.label.startswith(("Core", "Tccd")):
+                            entry_int = name.split('-')[-1]
+                            if entry_int in core_dict:
+                                continue
+                            core_dict[entry_int] = temp_data
+                            continue
+                        cores.append(round(temp_data))
                 if core_dict:
                     if not temp or temp == 1000:
                         temp = sum(core_dict.values()) // len(core_dict)
                     if not cls.cpu_temp_high or not cls.cpu_temp_crit:
                         cls.cpu_temp_high, cls.cpu_temp_crit = 80, 95
                     cls.cpu_temp[0].append(temp)
-                    if cpu_type == "ryzen":
-                        ccds: int = len(core_dict)
-                        cores_per_ccd: int = CORES // ccds
-                        z: int = 1
-                        for x in range(THREADS):
-                            if x == CORES:
-                                z = 1
-                            if CORE_MAP[x] + 1 > cores_per_ccd * z:
-                                z += 1
-                            if z in core_dict:
-                                cls.cpu_temp[x+1].append(core_dict[z])
-                    else:
-                        for x in range(THREADS):
-                            if CORE_MAP[x] in core_dict:
-                                cls.cpu_temp[x+1].append(core_dict[CORE_MAP[x]])
+                    for x in range(THREADS):
+                        if CORE_MAP[x] in core_dict:
+                            cls.cpu_temp[x+1].append(core_dict[CORE_MAP[x]])
 
                 elif len(cores) == THREADS / 2:
                     cls.cpu_temp[0].append(temp)
