@@ -31,6 +31,20 @@ from random import randint
 from shutil import which
 from typing import List, Dict, Tuple, Union, Any, Iterable
 
+import_errors: List[str] = []
+try:
+    import fcntl, termios, tty, pwd
+except Exception as e:
+    import_errors.append(f"{e}")
+
+try:
+    import psutil  # type: ignore
+except Exception as e:
+    import_errors.append(f"{e}")
+
+if import_errors:
+    raise Exception(f'Caught errors when trying to import required packages: {import_errors}')
+
 # ? Variables ------------------------------------------------------------------------------------->
 
 VERSION: str = "1.0.67"
@@ -51,41 +65,10 @@ with open("configs/bpytop.conf") as istream:
     )
 
 THREAD_ERROR: int = 0
+stdargs = None
 
-if __name__ == "__main__":
-    errors: List[str] = []
-    try:
-        import fcntl, termios, tty, pwd
-    except Exception as e:
-        errors.append(f"{e}")
-
-    try:
-        import psutil  # type: ignore
-    except Exception as e:
-        errors.append(f"{e}")
-
-    SELF_START = time()
-
-    SYSTEM: str
-    if "linux" in sys.platform:
-        SYSTEM = "Linux"
-    elif "bsd" in sys.platform:
-        SYSTEM = "BSD"
-    elif "darwin" in sys.platform:
-        SYSTEM = "MacOS"
-    else:
-        SYSTEM = "Other"
-
-    if errors:
-        print("ERROR!")
-        print("\n".join(errors))
-        if SYSTEM == "Other":
-            print("\nUnsupported platform!\n")
-        else:
-            print("\nInstall required modules!\n")
-        raise SystemExit(1)
-
-    # ? Argument parser ------------------------------------------------------------------------------->
+def parse_args():
+    'Argument parser'
     args = argparse.ArgumentParser()
     args.add_argument(
         "-b",
@@ -116,7 +99,23 @@ if __name__ == "__main__":
             f'psutil version: {".".join(str(x) for x in psutil.version_info)}'
         )
         raise SystemExit(0)
+    return stdargs
 
+if __name__ == "__main__":
+    SELF_START = time()
+
+    SYSTEM: str
+    if "linux" in sys.platform:
+        SYSTEM = "Linux"
+    elif "bsd" in sys.platform:
+        SYSTEM = "BSD"
+    elif "darwin" in sys.platform:
+        SYSTEM = "MacOS"
+    else:
+        SYSTEM = "Other"
+
+
+stdargs = parse_args()
 ARG_BOXES: str = stdargs.boxes
 LOW_COLOR: bool = stdargs.low_color
 DEBUG: bool = stdargs.debug
@@ -146,6 +145,9 @@ USER_THEME_DIR: str = f"{CONFIG_DIR}/themes"
 CORES: int = psutil.cpu_count(logical=False) or 1
 THREADS: int = psutil.cpu_count(logical=True) or 1
 
+from ui import menu
+
+MENUS: Dict[str, Dict[str, Tuple[str, ...]]] = menu.titles()
 MENUS: Dict[str, Dict[str, Tuple[str, ...]]] = {
     "options": {
         "normal": ("┌─┐┌─┐┌┬┐┬┌─┐┌┐┌┌─┐", "│ │├─┘ │ ││ ││││└─┐", "└─┘┴   ┴ ┴└─┘┘└┘└─┘"),
