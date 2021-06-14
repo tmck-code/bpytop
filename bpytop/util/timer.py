@@ -1,8 +1,9 @@
-'Timers for testing and debugging'
+"Timers for testing and debugging"
 
 from time import time
 from typing import Dict
 from logging import Logger
+
 
 class TimeIt:
     timers: Dict[str, float] = {}
@@ -37,6 +38,7 @@ def timeit_decorator(errlog):
             out = func(*args, **kw)
             errlog.debug(f"{func.__name__} completed in {time() - ts:.6f} seconds")
             return out
-        return timed
-    return wrapper
 
+        return timed
+
+    return wrapper

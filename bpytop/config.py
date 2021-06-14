@@ -7,6 +7,7 @@ from util import platform
 
 errlog = logging.getLogger("ErrorLogger")
 
+
 class Config:
     """Holds all config variables and functions for loading from and saving to disk"""
 
@@ -183,7 +184,9 @@ class Config:
         conf_file: str = ""
         if os.path.isfile(self.config_file):
             conf_file = self.config_file
-        elif platform.detect() == "BSD" and os.path.isfile("/usr/local/etc/bpytop.conf"):
+        elif platform.detect() == "BSD" and os.path.isfile(
+            "/usr/local/etc/bpytop.conf"
+        ):
             conf_file = "/usr/local/etc/bpytop.conf"
         elif platform.detect() != "BSD" and os.path.isfile("/etc/bpytop.conf"):
             conf_file = "/etc/bpytop.conf"
@@ -280,8 +283,7 @@ class Config:
         with open("configs/bpytop.conf") as istream:
             return Template(
                 f"#? Config file for bpytop v. {self.version}" + istream.read()
-        )
-
+            )
 
     def save_config(self):
         """Save current config to config file if difference in values or version, creates a new file if not found"""

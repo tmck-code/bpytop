@@ -7,6 +7,7 @@ DEFAULT_MENU_COLORS: Dict[str, Tuple[str, ...]] = {
     "selected": ("#ffa50a", "#f09800", "#db8b00", "#c27b00"),
 }
 
+
 @dataclass
 class MenuTitle:
     text: str
@@ -22,13 +23,13 @@ class MenuTitle:
             focus=focus,
             colour=DEFAULT_MENU_COLORS[focus],
         )
-        
+
 
 @dataclass
 class MenuTitles:
     options: MenuTitle
-    help:    MenuTitle
-    quit:    MenuTitle
+    help: MenuTitle
+    quit: MenuTitle
 
     @staticmethod
     def load():
@@ -40,9 +41,9 @@ class MenuTitles:
 
 def titles():
     titles = defaultdict(dict)
-    for menu_title in ['options', 'help', 'quit']:
-        for typ in ['normal', 'selected']:
-            with open(f'bpytop/ui/{menu_title}_{typ}.txt') as istream:
+    for menu_title in ["options", "help", "quit"]:
+        for typ in ["normal", "selected"]:
+            with open(f"bpytop/ui/{menu_title}_{typ}.txt") as istream:
                 titles[menu_title][typ] = istream.read()
     return titles
 

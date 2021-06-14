@@ -3,6 +3,7 @@ import logging
 
 errlog = logging.getLogger("ErrorLogger")
 
+
 class Color:
     """Holds representations for a 24-bit color value
     __init__(color, depth="fg", default=False)
@@ -23,7 +24,14 @@ class Color:
     escape: str
     default: bool
 
-    def __init__(self, color: str, depth: str = "fg", default: bool = False, true_color: bool = True, low_color: bool = False):
+    def __init__(
+        self,
+        color: str,
+        depth: str = "fg",
+        default: bool = False,
+        true_color: bool = True,
+        low_color: bool = False,
+    ):
         self.depth = depth
         self.default = default
         self.true_color = true_color
@@ -108,7 +116,13 @@ class Color:
 
     @staticmethod
     def escape_color(
-        hexa: str = "", r: int = 0, g: int = 0, b: int = 0, depth: str = "fg", true_color: bool = True, low_color: bool = False
+        hexa: str = "",
+        r: int = 0,
+        g: int = 0,
+        b: int = 0,
+        depth: str = "fg",
+        true_color: bool = True,
+        low_color: bool = False,
     ) -> str:
         """Returns escape sequence to set color
         * accepts either 6 digit hexadecimal hexa="#RRGGBB", 2 digit hexadecimal: hexa="#FF"

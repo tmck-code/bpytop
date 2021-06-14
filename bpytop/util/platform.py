@@ -1,6 +1,7 @@
 import sys
 from functools import lru_cache
 
+
 @lru_cache
 def detect() -> str:
     if "linux" in sys.platform:
@@ -11,6 +12,7 @@ def detect() -> str:
         return "MacOS"
     else:
         return "Other"
+
 
 def get_cpu_name() -> str:
     """Fetch a suitable CPU identifier from the CPU model name string"""

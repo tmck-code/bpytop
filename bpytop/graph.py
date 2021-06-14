@@ -267,7 +267,6 @@ if psutil.version_info[0] < 5 or (
 # ? Classes --------------------------------------------------------------------------------------->
 
 
-
 class Fx:
     """Text effects
     * trans(string: str): Replace whitespace with escape move right to not overwrite background behind whitespace.
@@ -588,6 +587,7 @@ class Key:
             cls.list.clear()
             clean_quit(1, thread=True)
 
+
 from util.color import Color
 
 
@@ -600,7 +600,9 @@ class Colors:
     green = Color("#68bf36", true_color=CONFIG.truecolor, low_color=LOW_COLOR)
     blue = Color("#0fd7ff", true_color=CONFIG.truecolor, low_color=LOW_COLOR)
     yellow = Color("#db8b00", true_color=CONFIG.truecolor, low_color=LOW_COLOR)
-    black_bg = Color("#00", depth="bg", true_color=CONFIG.truecolor, low_color=LOW_COLOR)
+    black_bg = Color(
+        "#00", depth="bg", true_color=CONFIG.truecolor, low_color=LOW_COLOR
+    )
     null = Color("", true_color=CONFIG.truecolor, low_color=LOW_COLOR)
 
 
@@ -2981,6 +2983,7 @@ class UpdateChecker:
 
 # ? Functions ------------------------------------------------------------------------------------->
 
+
 def create_box(
     x: int = 0,
     y: int = 0,
@@ -3111,6 +3114,7 @@ def clean_quit(errcode: int = 0, errmsg: str = "", thread: bool = False):
         print(errmsg)
 
     raise SystemExit(errcode)
+
 
 def readfile(file: str, default: str = "") -> str:
     out: Union[str, None] = None
