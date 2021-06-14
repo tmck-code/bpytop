@@ -41,7 +41,7 @@ except Exception as e: errors.append(f'{e}')
 # try: import psutil # type: ignore
 # except Exception as e: errors.append(f'{e}')
 
-from termux_hardware_stats.termux_hardware_stats import TermuxHardwareStats
+from termux_hardware_stats.termux_hardware_stats import termux_cpu, termux_mem
 
 SELF_START = time()
 
@@ -267,8 +267,8 @@ else:
             break
 USER_THEME_DIR: str = f'{CONFIG_DIR}/themes'
 
-CORES: int = TermuxHardwareStats.cpu_count(logical=False) or 1
-THREADS: int = TermuxHardwareStats.cpu_count(logical=True) or 1
+CORES: int = termux_cpu.cpu_count(logical=False) or 1
+THREADS: int = termux_cpu.cpu_count(logical=True) or 1
 
 THREAD_ERROR: int = 0
 
@@ -3064,7 +3064,7 @@ class CpuCollector(Collector):
 
     @classmethod
     def _collect(cls):
-        cls.cpu_usage[0].append(ceil(mean(TermuxHardwareStats.cpu_percent())))
+        cls.cpu_usage[0].append(ceil(mean(termux_cpu.CPUGlobalStateReader(CORES).load_percentages())))
         if len(cls.cpu_usage[0]) > Term.width * 4:
             del cls.cpu_usage[0][0]
 
@@ -3077,7 +3077,7 @@ class CpuCollector(Collector):
         #         getattr(cls, "cpu_" + x).append(ceil(getattr(cpu_times_percent, getattr(CONFIG, "cpu_graph_" + x))))
         #     if len(getattr(cls, "cpu_" + x)) > Term.width * 4:
         #         del getattr(cls, "cpu_" + x)[0]
-        cpu_percent = TermuxHardwareStats.cpu_percent()
+        cpu_percent = termux_cpu.CPUGlobalStateReader(CORES).load_percentages()
         for x in ["upper", "lower"]:
             if getattr(CONFIG, "cpu_graph_" + x) == "total":
                 setattr(cls, "cpu_" + x, cls.cpu_usage[0])
@@ -3085,14 +3085,14 @@ class CpuCollector(Collector):
                 getattr(cls, "cpu_" + x).append(ceil(sum(el['BusyPercentage'] for el in cpu_percent)))
             if len(getattr(cls, "cpu_" + x)) > Term.width * 4:
                 del getattr(cls, "cpu_" + x)[0]
-
-        for n, thread in enumerate(TermuxHardwareStats.cpu_percent(), start=1):
+        for n, thread in enumerate(termux_cpu.CPUGlobalStateReader(CORES).load_percentages(), start=1):
             cls.cpu_usage[n].append(ceil(thread))
             if len(cls.cpu_usage[n]) > Term.width * 2:
                 del cls.cpu_usage[n][0]
         try:
-            if CONFIG.show_cpu_freq and hasattr(TermuxHardwareStats.cpu_freq(), "current"):
-                freq: float = TermuxHardwareStats.cpu_freq().current
+            freq = termux_cpu.CPUFrequencyReader(CORES).load_for_core(0)
+            if CONFIG.show_cpu_freq and hasattr(freq, "current"):
+                freq: float = freq.current
                 cls.cpu_freq = round(freq * (1 if freq > 10 else 1000))
             elif cls.cpu_freq > 0:
                 cls.cpu_freq = 0
