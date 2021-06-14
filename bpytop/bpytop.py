@@ -222,44 +222,6 @@ except PermissionError:
     print(f'ERROR!\nNo permission to write to "{CONFIG_DIR}" directory!')
     raise SystemExit(1)
 
-# ? Timers for testing and debugging -------------------------------------------------------------->
-
-
-class TimeIt:
-    timers: Dict[str, float] = {}
-    paused: Dict[str, float] = {}
-
-    @classmethod
-    def start(cls, name):
-        cls.timers[name] = time()
-
-    @classmethod
-    def pause(cls, name):
-        if name in cls.timers:
-            cls.paused[name] = time() - cls.timers[name]
-            del cls.timers[name]
-
-    @classmethod
-    def stop(cls, name):
-        if name in cls.timers:
-            total: float = time() - cls.timers[name]
-            del cls.timers[name]
-            if name in cls.paused:
-                total += cls.paused[name]
-                del cls.paused[name]
-            errlog.debug(f"{name} completed in {total:.6f} seconds")
-
-
-def timeit_decorator(func):
-    def timed(*args, **kw):
-        ts = time()
-        out = func(*args, **kw)
-        errlog.debug(f"{func.__name__} completed in {time() - ts:.6f} seconds")
-        return out
-
-    return timed
-
-
 # ? Set up config class and load config ----------------------------------------------------------->
 
 
@@ -1341,6 +1303,7 @@ class Theme:
     cached: Dict[str, Dict[str, str]] = {}
     current: str = ""
 
+	# FIXME: This looks kinda crazy
     main_bg = (
         main_fg
     ) = (
