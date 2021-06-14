@@ -1898,6 +1898,7 @@ class CpuBox(Box, SubBox):
         if not "cpu" in cls.boxes: return
         cpu = CpuCollector
         if cpu.redraw: cls.redraw = True
+        cpu.got_sensors = True
         out: str = ""
         out_misc: str = ""
         lavg: str = ""
@@ -1927,12 +1928,16 @@ class CpuBox(Box, SubBox):
             if cls.column_size > 0 or ct_width > 0:
                 for n in range(THREADS):
                     Graphs.cores[n] = Graph(5 * cls.column_size + ct_width, 1, None, cpu.cpu_usage[n + 1])
-            if cpu.got_sensors:
+            # if cpu.got_sensors:
+            if True:
+                errlog.error('Drawing temps!: {cpu.cpu_temp}')
                 Graphs.temps[0] = Graph(5, 1, None, cpu.cpu_temp[0], max_value=cpu.cpu_temp_crit, offset=-23)
+                errlog.error(Graphs.temps[0])
                 if cls.column_size > 1:
                     for n in range(1, THREADS + 1):
                         if not cpu.cpu_temp[n]:
                             continue
+                        errlog.error(f'Drawing all core temps: {n}, {cpu.cpu_temp[n]}')
                         Graphs.temps[n] = Graph(5, 1, None, cpu.cpu_temp[n], max_value=cpu.cpu_temp_crit, offset=-23)
             Draw.buffer("cpu_misc", out_misc, only_save=True)
 
@@ -1970,7 +1975,7 @@ class CpuBox(Box, SubBox):
         if cpu.cpu_freq:
             freq: str = f'{cpu.cpu_freq} Mhz' if cpu.cpu_freq < 1000 else f'{float(cpu.cpu_freq / 1000):.1f} GHz'
             out += f'{Mv.to(by - 1, bx + bw - 9)}{THEME.div_line(Symbol.title_left)}{Fx.b}{THEME.title(freq)}{Fx.ub}{THEME.div_line(Symbol.title_right)}'
-        errlog.error(cpu.cpu_upper)
+        errlog.error(f'cpu upper: {cpu.cpu_upper}')
         out += f'{Mv.to(y, x)}{Graphs.cpu["up"](None if cls.resized else cpu.cpu_upper[-1])}'
         if mid_line:
             out += (f'{Mv.to(y+hh, x-1)}{THEME.cpu_box(Symbol.title_right)}{THEME.div_line}{Symbol.h_line * (w - bw - 3)}{THEME.div_line(Symbol.title_left)}'
@@ -1980,13 +1985,27 @@ class CpuBox(Box, SubBox):
         out += (f'{THEME.main_fg}{Mv.to(by + cy, bx + cx)}{Fx.b}{"CPU "}{Fx.ub}{Meters.cpu(cpu.cpu_usage[0][-1])}'
                 f'{THEME.gradient["cpu"][cpu.cpu_usage[0][-1]]}{cpu.cpu_usage[0][-1]:>4}{THEME.main_fg}%')
         if cpu.got_sensors:
-            try:
-                temp, unit = temperature(cpu.cpu_temp[0][-1], CONFIG.temp_scale)
-                out += (f'{THEME.inactive_fg} ⡀⡀⡀⡀⡀{Mv.l(5)}{THEME.gradient["temp"][min_max(cpu.cpu_temp[0][-1], 0, cpu.cpu_temp_crit) * 100 // cpu.cpu_temp_crit]}{Graphs.temps[0](None if cls.resized else cpu.cpu_temp[0][-1])}'
-                        f'{temp:>4}{THEME.main_fg}{unit}')
-            except:
-                cpu.got_sensors = False
+            # TODO: for history - this was the bug that was being silenced.
+            #
+            # Traceback (most recent call last):
+            #   File "/data/data/com.termux/files/home/dev/bpytop/bpytop.py", line 2966, in _runner
+            #     collector._draw()
+            #   File "/data/data/com.termux/files/home/dev/bpytop/bpytop.py", line 3133, in _draw
+            #     CpuBox._draw_fg()
+            #   File "/data/data/com.termux/files/home/dev/bpytop/bpytop.py", line 1989, in _draw_fg
+            #     out += (f'{THEME.inactive_fg} ⡀⡀⡀⡀⡀{Mv.l(5)}{THEME.gradient["temp"][min_max(cpu.cpu_temp[0][-1], 0, cpu.cpu_temp_crit) * 100 // cpu.cpu_temp_crit]}{Graphs.temps[0](None if cls.resized else cpu.cpu_temp[0][-1])}'
+            # TypeError: list indices must be integers or slices, not float
+            # try:
+            #     temp, unit = temperature(cpu.cpu_temp[0][-1], CONFIG.temp_scale)
+            #     out += (f'{THEME.inactive_fg} ⡀⡀⡀⡀⡀{Mv.l(5)}{THEME.gradient["temp"][min_max(cpu.cpu_temp[0][-1], 0, cpu.cpu_temp_crit) * 100 // cpu.cpu_temp_crit]}{Graphs.temps[0](None if cls.resized else cpu.cpu_temp[0][-1])}'
+            #             f'{temp:>4}{THEME.main_fg}{unit}')
+            # except:
+            #     cpu.got_sensors = False
+            temp, unit = temperature(cpu.cpu_temp[0][-1], CONFIG.temp_scale)
+            out += (f'{THEME.inactive_fg} ⡀⡀⡀⡀⡀{Mv.l(5)}{THEME.gradient["temp"][int(min_max(cpu.cpu_temp[0][-1], 0, cpu.cpu_temp_crit)) * 100 // cpu.cpu_temp_crit]}{Graphs.temps[0](None if cls.resized else cpu.cpu_temp[0][-1])}'
+                    f'{temp:>4}{THEME.main_fg}{unit}')
 
+        errlog.error(f'column size is {cls.column_size}')
         cy += 1
         for n in range(1, THREADS + 1):
             out += f'{THEME.main_fg}{Mv.to(by + cy, bx + cx)}{Fx.b + "C" + Fx.ub if THREADS < 100 else ""}{str(n):<{2 if cls.column_size == 0 else 3}}'
@@ -1996,15 +2015,12 @@ class CpuBox(Box, SubBox):
                 out += f'{THEME.gradient["cpu"][cpu.cpu_usage[n][-1]]}'
             out += f'{cpu.cpu_usage[n][-1]:>{3 if cls.column_size < 2 else 4}}{THEME.main_fg}%'
             if cpu.got_sensors and cpu.cpu_temp[n] and not hide_cores:
-                try:
-                    temp, unit = temperature(cpu.cpu_temp[n][-1], CONFIG.temp_scale)
-                    if cls.column_size > 1:
-                        out += f'{THEME.inactive_fg} ⡀⡀⡀⡀⡀{Mv.l(5)}{THEME.gradient["temp"][min_max(cpu.cpu_temp[n][-1], 0, cpu.cpu_temp_crit) * 100 // cpu.cpu_temp_crit]}{Graphs.temps[n](None if cls.resized else cpu.cpu_temp[n][-1])}'
-                    else:
-                        out += f'{THEME.gradient["temp"][min_max(temp, 0, cpu.cpu_temp_crit) * 100 // cpu.cpu_temp_crit]}'
-                    out += f'{temp:>4}{THEME.main_fg}{unit}'
-                except:
-                    cpu.got_sensors = False
+                temp, unit = temperature(cpu.cpu_temp[n][-1], CONFIG.temp_scale)
+                if cls.column_size > 1:
+                    out += f'{THEME.inactive_fg} ⡀⡀⡀⡀⡀{Mv.l(5)}{THEME.gradient["temp"][min_max(cpu.cpu_temp[n][-1], 0, cpu.cpu_temp_crit) * 100 // cpu.cpu_temp_crit]}{Graphs.temps[n](None if cls.resized else cpu.cpu_temp[n][-1])}'
+                else:
+                    out += f'{THEME.gradient["temp"][min_max(temp, 0, cpu.cpu_temp_crit) * 100 // cpu.cpu_temp_crit]}'
+                out += f'{temp:>4}{THEME.main_fg}{unit}'
             elif cpu.got_sensors and not hide_cores:
                 out += f'{Mv.r(max(6, 6 * cls.column_size))}'
             out += f'{THEME.div_line(Symbol.v_line)}'
@@ -3035,35 +3051,7 @@ class CpuCollector(Collector):
     def get_sensors(cls):
         '''Check if we can get cpu temps and return method of getting temps'''
         cls.sensor_method = ""
-        if SYSTEM == "MacOS":
-            try:
-                if which("coretemp") and subprocess.check_output(["coretemp", "-p"], universal_newlines=True).strip().replace("-", "").isdigit():
-                    cls.sensor_method = "coretemp"
-                elif which("osx-cpu-temp") and subprocess.check_output("osx-cpu-temp", universal_newlines=True).rstrip().endswith("°C"):
-                    cls.sensor_method = "osx-cpu-temp"
-            except: pass
-        elif CONFIG.cpu_sensor != "Auto" and CONFIG.cpu_sensor in CONFIG.cpu_sensors:
-            cls.sensor_method = "psutil"
-        # TODO: psutil section
-        # elif hasattr(psutil, "sensors_temperatures"):
-        #     try:
-        #         temps = psutil.sensors_temperatures()
-        #         if temps:
-        #             for name, entries in temps.items():
-        #                 if name.lower().startswith("cpu"):
-        #                     cls.sensor_method = "psutil"
-        #                     break
-        #                 for entry in entries:
-        #                     if entry.label.startswith(("Package", "Core 0", "Tdie", "CPU")):
-        #                         cls.sensor_method = "psutil"
-        #                         break
-        #     except: pass
-        if not cls.sensor_method and SYSTEM == "Linux":
-            try:
-                if which("vcgencmd") and subprocess.check_output(["vcgencmd", "measure_temp"], universal_newlines=True).strip().endswith("'C"):
-                    cls.sensor_method = "vcgencmd"
-            except: pass
-        cls.got_sensors = bool(cls.sensor_method)
+        cls.got_sensors = True
 
     @classmethod
     def _collect(cls):
@@ -3092,20 +3080,13 @@ class CpuCollector(Collector):
             cls.cpu_usage[n].append(ceil(thread))
             if len(cls.cpu_usage[n]) > Term.width * 2:
                 del cls.cpu_usage[n][0]
-        try:
-            freq = termux_cpu.CPUFrequencyReader(CORES).load_for_core(0)
-            if CONFIG.show_cpu_freq and hasattr(freq, "current"):
-                freq: float = freq.current
-                cls.cpu_freq = round(freq * (1 if freq > 10 else 1000))
-            elif cls.cpu_freq > 0:
-                cls.cpu_freq = 0
-        except Exception as e:
-            if not cls.freq_error:
-                cls.freq_error = True
-                errlog.error("Exception while getting cpu frequency!")
-                errlog.exception(f'{e}')
-            else:
-                pass
+
+        freq = termux_cpu.CPUFrequencyReader(CORES).load_for_core(0)
+        if CONFIG.show_cpu_freq and hasattr(freq, "current"):
+            freq: float = freq.current
+            cls.cpu_freq = round(freq * (1 if freq > 10 else 1000))
+        elif cls.cpu_freq > 0:
+            cls.cpu_freq = 0
         # TODO: psutil section
         # cls.load_avg = [round(lavg, 2) for lavg in psutil.getloadavg()]
         # cls.uptime = str(timedelta(seconds=round(time()-psutil.boot_time(),0)))[:-3].replace(" days,", "d").replace(" day,", "d")
@@ -3125,97 +3106,35 @@ class CpuCollector(Collector):
         c_max: int = 0
         s_name: str = "_-_"
         s_label: str = "_-_"
-        if cls.sensor_method == "psutil":
-            errlog.error('collecting temps')
-            try:
-                if CONFIG.cpu_sensor != "Auto":
-                    s_name, s_label = CONFIG.cpu_sensor.split(":", 1)
-                # TODO: psutil section
-                for name, temp_data in termux_temp.items():
-                    cpu_type = "other"
-                    cls.cpu_temp_high = 80
-                    cls.cpu_temp_crit = 95
-                    temp = temp_data
-                    if name.startswith('cpu-'):
-                        if entry.label.startswith(("Core", "Tccd")):
-                            entry_int = name.split('-')[-1]
-                            if entry_int in core_dict:
-                                continue
-                            core_dict[entry_int] = temp_data
-                            continue
-                        cores.append(round(temp_data))
-                if core_dict:
-                    if not temp or temp == 1000:
-                        temp = sum(core_dict.values()) // len(core_dict)
-                    if not cls.cpu_temp_high or not cls.cpu_temp_crit:
-                        cls.cpu_temp_high, cls.cpu_temp_crit = 80, 95
-                    cls.cpu_temp[0].append(temp)
-                    for x in range(THREADS):
-                        if CORE_MAP[x] in core_dict:
-                            cls.cpu_temp[x+1].append(core_dict[CORE_MAP[x]])
+        errlog.error('collecting temps')
 
-                elif len(cores) == THREADS / 2:
-                    cls.cpu_temp[0].append(temp)
-                    for n, t in enumerate(cores, start=1):
-                        try:
-                            cls.cpu_temp[n].append(t)
-                            cls.cpu_temp[THREADS // 2 + n].append(t)
-                        except IndexError:
-                            break
-
-                else:
-                    cls.cpu_temp[0].append(temp)
-                    if len(cores) > 1:
-                        for n, t in enumerate(cores, start=1):
-                            try:
-                                cls.cpu_temp[n].append(t)
-                            except IndexError:
-                                break
-            except Exception as e:
-                    errlog.exception(f'{e}')
-                    cls.got_sensors = False
-                    CpuBox._calc_size()
-
-        else:
-            try:
-                if cls.sensor_method == "coretemp":
-                    temp = max(0, int(subprocess.check_output(["coretemp", "-p"], universal_newlines=True).strip()))
-                    cores = [max(0, int(x)) for x in subprocess.check_output("coretemp", universal_newlines=True).split()]
-                    if len(cores) == THREADS / 2:
-                        cls.cpu_temp[0].append(temp)
-                        for n, t in enumerate(cores, start=1):
-                            try:
-                                cls.cpu_temp[n].append(t)
-                                cls.cpu_temp[THREADS // 2 + n].append(t)
-                            except IndexError:
-                                break
-                    else:
-                        cores.insert(0, temp)
-                        for n, t in enumerate(cores):
-                            try:
-                                cls.cpu_temp[n].append(t)
-                            except IndexError:
-                                break
-                    if not cls.cpu_temp_high:
-                        cls.cpu_temp_high = 85
-                        cls.cpu_temp_crit = 100
-                elif cls.sensor_method == "osx-cpu-temp":
-                    temp = max(0, round(float(subprocess.check_output("osx-cpu-temp", universal_newlines=True).strip()[:-2])))
-                    if not cls.cpu_temp_high:
-                        cls.cpu_temp_high = 85
-                        cls.cpu_temp_crit = 100
-                elif cls.sensor_method == "vcgencmd":
-                    temp = max(0, round(float(subprocess.check_output(["vcgencmd", "measure_temp"], universal_newlines=True).strip()[5:-2])))
-                    if not cls.cpu_temp_high:
-                        cls.cpu_temp_high = 60
-                        cls.cpu_temp_crit = 80
-            except Exception as e:
-                    errlog.exception(f'{e}')
-                    cls.got_sensors = False
-                    CpuBox._calc_size()
-            else:
-                if not cores:
-                    cls.cpu_temp[0].append(temp)
+        if CONFIG.cpu_sensor != "Auto":
+            s_name, s_label = CONFIG.cpu_sensor.split(":", 1)
+        # TODO: psutil section
+        for name, temp_data in termux_temp.load_temps().items():
+            temp_data = int(temp_data)
+            cpu_type = "other"
+            cls.cpu_temp_high = 80
+            cls.cpu_temp_crit = 95
+            temp = temp_data
+            if name.startswith('cpu-'):
+                entry_int = int(name.split('-')[-2])
+                if entry_int in core_dict:
+                    continue
+                core_dict[entry_int] = temp_data
+                cores.append(round(temp_data))
+                errlog.error(f'core dict: {core_dict}')
+        if core_dict:
+            if not temp or temp == 1000:
+                temp = sum(core_dict.values()) // len(core_dict)
+                errlog.error(f'calculated temp: {temp}')
+            if not cls.cpu_temp_high or not cls.cpu_temp_crit:
+                cls.cpu_temp_high, cls.cpu_temp_crit = 80, 95
+            cls.cpu_temp[0].append(temp)
+            for x in range(THREADS):
+                if CORE_MAP[x] in core_dict:
+                    cls.cpu_temp[x+1].append(core_dict[CORE_MAP[x]])
+        errlog.error(f'core dict: {core_dict}')
 
         if not core_dict and len(cores) <= 1:
             cls.cpu_temp_only = True
