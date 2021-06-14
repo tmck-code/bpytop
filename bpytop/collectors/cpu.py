@@ -1,3 +1,6 @@
+from typing import List
+from bpytop.collectors.collector import Collector
+
 class CpuCollector(Collector):
     """Collects cpu usage for cpu and cores, cpu frequency, load_avg, uptime and cpu temps"""
 

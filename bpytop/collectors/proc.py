@@ -1,3 +1,9 @@
+from typing import Dict, Union, Any, List
+from collections import defaultdict
+import psutil
+
+from bpytop.collectors.collector import Collector
+
 class ProcCollector(Collector):
     """Collects process stats"""
 

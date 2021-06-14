@@ -1,3 +1,6 @@
+import threading
+from typing import Dict
+
 class Draw:
     """Holds the draw buffer and manages IO blocking queue
     * .buffer([+]name[!], *args, append=False, now=False, z=100) : Add *args to buffer

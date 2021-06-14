@@ -1,3 +1,5 @@
+from typing import List
+
 class Init:
     running: bool = True
     initbg_colors: List[str] = []

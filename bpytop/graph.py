@@ -30,20 +30,20 @@ from random import randint
 from shutil import which
 from typing import List, Dict, Tuple, Union, Any, Iterable
 
-from util.draw import Draw
-from util.term import Term
-from ui.menu import Menu, Banner
-from util import fmt
-from util.symbol import Symbol
-from collectors.cpu import CpuCollector
-from collectors.mem import MemCollector
-from collectors.proc import ProcCollector
-from collectors.net import NetCollector
-from collectors.collector import Collector
+from bpytop.util.draw import Draw
+from bpytop.util.term import Term
+from bpytop.ui.menu import Menu, Banner
+from bpytop.util import fmt
+from bpytop.util.symbol import Symbol
+from bpytop.collectors.cpu import CpuCollector
+from bpytop.collectors.mem import MemCollector
+from bpytop.collectors.proc import ProcCollector
+from bpytop.collectors.net import NetCollector
+from bpytop.collectors.collector import Collector
 
-from util.timer import TimeIt
-from util.init import Init
-from util import platform
+from bpytop.util.timer import TimeIt
+from bpytop.util.init import Init
+from bpytop.util import platform
 
 import_errors: List[str] = []
 try:

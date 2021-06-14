@@ -1,3 +1,11 @@
+from typing import List, Dict, Any
+from time import time
+
+import psutil
+
+from bpytop.collectors.collector import Collector
+from bpytop.util import fmt
+
 class NetCollector(Collector):
     """Collects network stats"""
 
@@ -147,7 +155,7 @@ class NetCollector(Collector):
                 stat["graph_lower"] = 7
                 if not cls.auto_min:
                     stat["redraw"] = True
-                    strings["graph_top"] = floating_humanizer(
+                    strings["graph_top"] = fmt.floating_humanizer(
                         stat["graph_top"], short=True
                     )
 
@@ -166,15 +174,15 @@ class NetCollector(Collector):
             if len(stat["speed"]) > NetBox.width * 2:
                 del stat["speed"][0]
 
-            strings["total"] = floating_humanizer(stat["total"] - stat["offset"])
-            strings["byte_ps"] = floating_humanizer(stat["speed"][-1], per_second=True)
-            strings["bit_ps"] = floating_humanizer(
+            strings["total"] = fmt.floating_humanizer(stat["total"] - stat["offset"])
+            strings["byte_ps"] = fmt.floating_humanizer(stat["speed"][-1], per_second=True)
+            strings["bit_ps"] = fmt.floating_humanizer(
                 stat["speed"][-1], bit=True, per_second=True
             )
 
             if speed > stat["top"] or not stat["top"]:
                 stat["top"] = speed
-                strings["top"] = floating_humanizer(
+                strings["top"] = fmt.floating_humanizer(
                     stat["top"], bit=True, per_second=True
                 )
 
@@ -196,7 +204,7 @@ class NetCollector(Collector):
                     stat["graph_raise"] = 0
                     stat["graph_lower"] = 0
                     stat["redraw"] = True
-                    strings["graph_top"] = floating_humanizer(
+                    strings["graph_top"] = fmt.floating_humanizer(
                         stat["graph_top"], short=True
                     )
 
@@ -209,7 +217,7 @@ class NetCollector(Collector):
             )
             if c_max != cls.sync_top:
                 cls.sync_top = c_max
-                cls.sync_string = floating_humanizer(cls.sync_top, short=True)
+                cls.sync_string = fmt.floating_humanizer(cls.sync_top, short=True)
                 NetBox.redraw = True
 
     @classmethod

@@ -1,3 +1,5 @@
+from typing import Dict
+
 class Symbol:
     h_line: str = "─"
     v_line: str = "│"

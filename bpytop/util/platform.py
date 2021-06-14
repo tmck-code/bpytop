@@ -1,5 +1,6 @@
-import sys
+import sys, subprocess, re, os
 from functools import lru_cache
+from typing import List
 
 
 @lru_cache
@@ -21,6 +22,7 @@ def get_cpu_name() -> str:
     command: str = ""
     cmd_out: str = ""
     rem_line: str = ""
+    SYSTEM = detect()
     if SYSTEM == "Linux":
         command = "cat /proc/cpuinfo"
         rem_line = "model name"
@@ -78,7 +80,7 @@ def get_cpu_core_mapping() -> List[int]:
     mapping: List[int] = []
     core_ids: List[int] = []
 
-    if SYSTEM == "Linux" and os.path.isfile("/proc/cpuinfo"):
+    if detect() == "Linux" and os.path.isfile("/proc/cpuinfo"):
         try:
             mapping = [0] * THREADS
             num = 0

@@ -1,3 +1,5 @@
+import os, sys
+
 class Term:
     """Terminal info and commands"""
 

@@ -1,3 +1,5 @@
+from typing import Union, Tuple, Dict
+
 def floating_humanizer(
     value: Union[float, int],
     bit: bool = False,

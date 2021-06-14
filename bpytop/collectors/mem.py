@@ -1,3 +1,10 @@
+from typing import List, Dict, Tuple
+from time import time
+
+import psutil
+
+from bpytop.collectors.collector import Collector
+
 class MemCollector(Collector):
     """Collects memory and disks information"""
 
