@@ -31,77 +31,9 @@ from random import randint
 from shutil import which
 from typing import List, Dict, Tuple, Union, Any, Iterable
 
-errors: List[str] = []
-try:
-    import fcntl, termios, tty, pwd
-except Exception as e:
-    errors.append(f"{e}")
-
-try:
-    import psutil  # type: ignore
-except Exception as e:
-    errors.append(f"{e}")
-
-SELF_START = time()
-
-SYSTEM: str
-if "linux" in sys.platform:
-    SYSTEM = "Linux"
-elif "bsd" in sys.platform:
-    SYSTEM = "BSD"
-elif "darwin" in sys.platform:
-    SYSTEM = "MacOS"
-else:
-    SYSTEM = "Other"
-
-if errors:
-    print("ERROR!")
-    print("\n".join(errors))
-    if SYSTEM == "Other":
-        print("\nUnsupported platform!\n")
-    else:
-        print("\nInstall required modules!\n")
-    raise SystemExit(1)
+# ? Variables ------------------------------------------------------------------------------------->
 
 VERSION: str = "1.0.67"
-
-# ? Argument parser ------------------------------------------------------------------------------->
-args = argparse.ArgumentParser()
-args.add_argument(
-    "-b",
-    "--boxes",
-    action="store",
-    dest="boxes",
-    help='which boxes to show at start, example: -b "cpu mem net proc"',
-)
-args.add_argument(
-    "-lc",
-    "--low-color",
-    action="store_true",
-    help="disable truecolor, converts 24-bit colors to 256-color",
-)
-args.add_argument(
-    "-v", "--version", action="store_true", help="show version info and exit"
-)
-args.add_argument(
-    "--debug",
-    action="store_true",
-    help="start with loglevel set to DEBUG overriding value set in config",
-)
-stdargs = args.parse_args()
-
-if stdargs.version:
-    print(
-        f"bpytop version: {VERSION}\n"
-        f'psutil version: {".".join(str(x) for x in psutil.version_info)}'
-    )
-    raise SystemExit(0)
-
-ARG_BOXES: str = stdargs.boxes
-LOW_COLOR: bool = stdargs.low_color
-DEBUG: bool = stdargs.debug
-
-# ? Variables ------------------------------------------------------------------------------------->
 
 BANNER_SRC: List[Tuple[str, str, str]] = [
     ("#ffa50a", "#0fd7ff", "██████╗ ██████╗ ██╗   ██╗████████╗ ██████╗ ██████╗"),
@@ -113,163 +45,81 @@ BANNER_SRC: List[Tuple[str, str, str]] = [
 ]
 
 # *?This is the template used to create the config file
-DEFAULT_CONF: Template = Template(
-    f"#? Config file for bpytop v. {VERSION}"
-    + """
+with open("configs/bpytop.conf") as istream:
+    DEFAULT_CONF: Template = Template(
+        f"#? Config file for bpytop v. {VERSION}" + istream.read()
+    )
 
-#* Color theme, looks for a .theme file in "/usr/[local/]share/bpytop/themes" and "~/.config/bpytop/themes", "Default" for builtin default theme.
-#* Prefix name by a plus sign (+) for a theme located in user themes folder, i.e. color_theme="+monokai"
-color_theme="$color_theme"
+THREAD_ERROR: int = 0
 
-#* If the theme set background should be shown, set to False if you want terminal background transparency
-theme_background=$theme_background
+if __name__ == "__main__":
+    errors: List[str] = []
+    try:
+        import fcntl, termios, tty, pwd
+    except Exception as e:
+        errors.append(f"{e}")
 
-#* Sets if 24-bit truecolor should be used, will convert 24-bit colors to 256 color (6x6x6 color cube) if false.
-truecolor=$truecolor
+    try:
+        import psutil  # type: ignore
+    except Exception as e:
+        errors.append(f"{e}")
 
-#* Manually set which boxes to show. Available values are "cpu mem net proc", separate values with whitespace.
-shown_boxes="$shown_boxes"
+    SELF_START = time()
 
-#* Update time in milliseconds, increases automatically if set below internal loops processing time, recommended 2000 ms or above for better sample times for graphs.
-update_ms=$update_ms
+    SYSTEM: str
+    if "linux" in sys.platform:
+        SYSTEM = "Linux"
+    elif "bsd" in sys.platform:
+        SYSTEM = "BSD"
+    elif "darwin" in sys.platform:
+        SYSTEM = "MacOS"
+    else:
+        SYSTEM = "Other"
 
-#* Processes update multiplier, sets how often the process list is updated as a multiplier of "update_ms".
-#* Set to 2 or higher to greatly decrease bpytop cpu usage. (Only integers)
-proc_update_mult=$proc_update_mult
+    if errors:
+        print("ERROR!")
+        print("\n".join(errors))
+        if SYSTEM == "Other":
+            print("\nUnsupported platform!\n")
+        else:
+            print("\nInstall required modules!\n")
+        raise SystemExit(1)
 
-#* Processes sorting, "pid" "program" "arguments" "threads" "user" "memory" "cpu lazy" "cpu responsive",
-#* "cpu lazy" updates top process over time, "cpu responsive" updates top process directly.
-proc_sorting="$proc_sorting"
+    # ? Argument parser ------------------------------------------------------------------------------->
+    args = argparse.ArgumentParser()
+    args.add_argument(
+        "-b",
+        "--boxes",
+        action="store",
+        dest="boxes",
+        help='which boxes to show at start, example: -b "cpu mem net proc"',
+    )
+    args.add_argument(
+        "-lc",
+        "--low-color",
+        action="store_true",
+        help="disable truecolor, converts 24-bit colors to 256-color",
+    )
+    args.add_argument(
+        "-v", "--version", action="store_true", help="show version info and exit"
+    )
+    args.add_argument(
+        "--debug",
+        action="store_true",
+        help="start with loglevel set to DEBUG overriding value set in config",
+    )
+    stdargs = args.parse_args()
 
-#* Reverse sorting order, True or False.
-proc_reversed=$proc_reversed
+    if stdargs.version:
+        print(
+            f"bpytop version: {VERSION}\n"
+            f'psutil version: {".".join(str(x) for x in psutil.version_info)}'
+        )
+        raise SystemExit(0)
 
-#* Show processes as a tree
-proc_tree=$proc_tree
-
-#* Which depth the tree view should auto collapse processes at
-tree_depth=$tree_depth
-
-#* Use the cpu graph colors in the process list.
-proc_colors=$proc_colors
-
-#* Use a darkening gradient in the process list.
-proc_gradient=$proc_gradient
-
-#* If process cpu usage should be of the core it's running on or usage of the total available cpu power.
-proc_per_core=$proc_per_core
-
-#* Show process memory as bytes instead of percent
-proc_mem_bytes=$proc_mem_bytes
-
-#* Sets the CPU stat shown in upper half of the CPU graph, "total" is always available, see:
-#* https://psutil.readthedocs.io/en/latest/#psutil.cpu_times for attributes available on specific platforms.
-#* Select from a list of detected attributes from the options menu
-cpu_graph_upper="$cpu_graph_upper"
-
-#* Sets the CPU stat shown in lower half of the CPU graph, "total" is always available, see:
-#* https://psutil.readthedocs.io/en/latest/#psutil.cpu_times for attributes available on specific platforms.
-#* Select from a list of detected attributes from the options menu
-cpu_graph_lower="$cpu_graph_lower"
-
-#* Toggles if the lower CPU graph should be inverted.
-cpu_invert_lower=$cpu_invert_lower
-
-#* Set to True to completely disable the lower CPU graph.
-cpu_single_graph=$cpu_single_graph
-
-#* Shows the system uptime in the CPU box.
-show_uptime=$show_uptime
-
-#* Check cpu temperature, needs "osx-cpu-temp" on MacOS X.
-check_temp=$check_temp
-
-#* Which sensor to use for cpu temperature, use options menu to select from list of available sensors.
-cpu_sensor=$cpu_sensor
-
-#* Show temperatures for cpu cores also if check_temp is True and sensors has been found
-show_coretemp=$show_coretemp
-
-#* Which temperature scale to use, available values: "celsius", "fahrenheit", "kelvin" and "rankine"
-temp_scale="$temp_scale"
-
-#* Show CPU frequency, can cause slowdowns on certain systems with some versions of psutil
-show_cpu_freq=$show_cpu_freq
-
-#* Draw a clock at top of screen, formatting according to strftime, empty string to disable.
-draw_clock="$draw_clock"
-
-#* Update main ui in background when menus are showing, set this to false if the menus is flickering too much for comfort.
-background_update=$background_update
-
-#* Custom cpu model name, empty string to disable.
-custom_cpu_name="$custom_cpu_name"
-
-#* Optional filter for shown disks, should be full path of a mountpoint, separate multiple values with a comma ",".
-#* Begin line with "exclude=" to change to exclude filter, otherwise defaults to "most include" filter. Example: disks_filter="exclude=/boot, /home/user"
-disks_filter="$disks_filter"
-
-#* Show graphs instead of meters for memory values.
-mem_graphs=$mem_graphs
-
-#* If swap memory should be shown in memory box.
-show_swap=$show_swap
-
-#* Show swap as a disk, ignores show_swap value above, inserts itself after first disk.
-swap_disk=$swap_disk
-
-#* If mem box should be split to also show disks info.
-show_disks=$show_disks
-
-#* Filter out non physical disks. Set this to False to include network disks, RAM disks and similar.
-only_physical=$only_physical
-
-#* Read disks list from /etc/fstab. This also disables only_physical.
-use_fstab=$use_fstab
-
-#* Toggles if io stats should be shown in regular disk usage view
-show_io_stat=$show_io_stat
-
-#* Toggles io mode for disks, showing only big graphs for disk read/write speeds.
-io_mode=$io_mode
-
-#* Set to True to show combined read/write io graphs in io mode.
-io_graph_combined=$io_graph_combined
-
-#* Set the top speed for the io graphs in MiB/s (10 by default), use format "device:speed" separate disks with a comma ",".
-#* Example: "/dev/sda:100, /dev/sdb:20"
-io_graph_speeds="$io_graph_speeds"
-
-#* Set fixed values for network graphs, default "10M" = 10 Mibibytes, possible units "K", "M", "G", append with "bit" for bits instead of bytes, i.e "100mbit"
-net_download="$net_download"
-net_upload="$net_upload"
-
-#* Start in network graphs auto rescaling mode, ignores any values set above and rescales down to 10 Kibibytes at the lowest.
-net_auto=$net_auto
-
-#* Sync the scaling for download and upload to whichever currently has the highest scale
-net_sync=$net_sync
-
-#* If the network graphs color gradient should scale to bandwidth usage or auto scale, bandwidth usage is based on "net_download" and "net_upload" values
-net_color_fixed=$net_color_fixed
-
-#* Starts with the Network Interface specified here.
-net_iface="$net_iface"
-
-#* Show battery stats in top right if battery is present
-show_battery=$show_battery
-
-#* Show init screen at startup, the init screen is purely cosmetical
-show_init=$show_init
-
-#* Enable check for new version from github.com/aristocratos/bpytop at start.
-update_check=$update_check
-
-#* Set loglevel for "~/.config/bpytop/error.log" levels are: "ERROR" "WARNING" "INFO" "DEBUG".
-#* The level set includes all lower levels, i.e. "DEBUG" will show all logging info.
-log_level=$log_level
-"""
-)
+ARG_BOXES: str = stdargs.boxes
+LOW_COLOR: bool = stdargs.low_color
+DEBUG: bool = stdargs.debug
 
 CONFIG_DIR: str = f'{os.path.expanduser("~")}/.config/bpytop'
 if not os.path.isdir(CONFIG_DIR):
@@ -295,53 +145,6 @@ USER_THEME_DIR: str = f"{CONFIG_DIR}/themes"
 
 CORES: int = psutil.cpu_count(logical=False) or 1
 THREADS: int = psutil.cpu_count(logical=True) or 1
-
-THREAD_ERROR: int = 0
-
-DEFAULT_THEME: Dict[str, str] = {
-    "main_bg": "#00",
-    "main_fg": "#cc",
-    "title": "#ee",
-    "hi_fg": "#969696",
-    "selected_bg": "#7e2626",
-    "selected_fg": "#ee",
-    "inactive_fg": "#40",
-    "graph_text": "#60",
-    "meter_bg": "#40",
-    "proc_misc": "#0de756",
-    "cpu_box": "#3d7b46",
-    "mem_box": "#8a882e",
-    "net_box": "#423ba5",
-    "proc_box": "#923535",
-    "div_line": "#30",
-    "temp_start": "#4897d4",
-    "temp_mid": "#5474e8",
-    "temp_end": "#ff40b6",
-    "cpu_start": "#50f095",
-    "cpu_mid": "#f2e266",
-    "cpu_end": "#fa1e1e",
-    "free_start": "#223014",
-    "free_mid": "#b5e685",
-    "free_end": "#dcff85",
-    "cached_start": "#0b1a29",
-    "cached_mid": "#74e6fc",
-    "cached_end": "#26c5ff",
-    "available_start": "#292107",
-    "available_mid": "#ffd77a",
-    "available_end": "#ffb814",
-    "used_start": "#3b1f1c",
-    "used_mid": "#d9626d",
-    "used_end": "#ff4769",
-    "download_start": "#231a63",
-    "download_mid": "#4f43a3",
-    "download_end": "#b0a9de",
-    "upload_start": "#510554",
-    "upload_mid": "#7d4180",
-    "upload_end": "#dcafde",
-    "process_start": "#80d0a3",
-    "process_mid": "#dcd179",
-    "process_end": "#d45454",
-}
 
 MENUS: Dict[str, Dict[str, Tuple[str, ...]]] = {
     "options": {
@@ -1535,7 +1338,7 @@ class Theme:
     """__init__ accepts a dict containing { "color_element" : "color" }"""
 
     themes: Dict[str, str] = {}
-    cached: Dict[str, Dict[str, str]] = {"Default": DEFAULT_THEME}
+    cached: Dict[str, Dict[str, str]] = {}
     current: str = ""
 
     main_bg = (
@@ -1645,10 +1448,7 @@ class Theme:
             tdict = self._load_file(self.themes[theme])
             self.cached[theme] = tdict
         else:
-            errlog.warning(f'No theme named "{theme}" found!')
-            theme = "Default"
-            CONFIG.color_theme = theme
-            tdict = DEFAULT_THEME
+            raise Exception(f'No theme named "{theme}" found!')
         self.current = theme
         # if CONFIG.color_theme != theme: CONFIG.color_theme = theme
         if not "graph_text" in tdict and "inactive_fg" in tdict:
@@ -1661,7 +1461,7 @@ class Theme:
             tdict["process_end"] = tdict.get("cpu_end", "")
 
         # * Get key names from DEFAULT_THEME dict to not leave any color unset if missing from theme dict
-        for item, value in DEFAULT_THEME.items():
+        for item, value in tdict.items():
             default = item in ["main_fg", "main_bg"]
             depth = "bg" if item in ["main_bg", "selected_bg"] else "fg"
             if item in tdict:
@@ -1719,7 +1519,7 @@ class Theme:
     @classmethod
     def refresh(cls):
         """Sets themes dict with names and paths to all found themes"""
-        cls.themes = {"Default": "Default"}
+        cls.themes = {"default": "bpytop-themes/default_black.theme"}
         try:
             for d in (THEME_DIR, USER_THEME_DIR):
                 if not d:
@@ -3138,7 +2938,7 @@ class NetBox(Box, SubBox):
         if not "net" in cls.boxes:
             return ""
         return f'{create_box(box=cls, line_color=THEME.net_box)}\
-		{create_box(x=cls.box_x, y=cls.box_y, width=cls.box_width, height=cls.box_height, line_color=THEME.div_line, fill=False, title="Download", title2="Upload")}'
+        {create_box(x=cls.box_x, y=cls.box_y, width=cls.box_width, height=cls.box_height, line_color=THEME.div_line, fill=False, title="Download", title2="Upload")}'
 
     @classmethod
     def _draw_fg(cls):
@@ -7011,9 +6811,9 @@ def create_box(
 
     # * Draw corners
     out += f"{Mv.to(y, x)}{Symbol.left_up}\
-	{Mv.to(y, x + width - 1)}{Symbol.right_up}\
-	{Mv.to(y + height - 1, x)}{Symbol.left_down}\
-	{Mv.to(y + height - 1, x + width - 1)}{Symbol.right_down}"
+    {Mv.to(y, x + width - 1)}{Symbol.right_up}\
+    {Mv.to(y + height - 1, x)}{Symbol.left_down}\
+    {Mv.to(y + height - 1, x + width - 1)}{Symbol.right_down}"
 
     # * Draw titles if enabled
     if title:
