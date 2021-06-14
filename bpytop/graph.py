@@ -30,6 +30,21 @@ from random import randint
 from shutil import which
 from typing import List, Dict, Tuple, Union, Any, Iterable
 
+from util.draw import Draw
+from util.term import Term
+from ui.menu import Menu, Banner
+from util import fmt
+from util.symbol import Symbol
+from collectors.cpu import CpuCollector
+from collectors.mem import MemCollector
+from collectors.proc import ProcCollector
+from collectors.net import NetCollector
+from collectors.collector import Collector
+
+from util.timer import TimeIt
+from util.init import Init
+from util import platform
+
 import_errors: List[str] = []
 try:
     import fcntl, termios, tty, pwd
@@ -874,9 +889,9 @@ class Graph:
             self.lowest = 1 if self.round_up_low else 0
             self.max_value = max_value
             data = [
-                min_max(
+                fmt.min_max(
                     (v + offset) * 100 // (max_value + offset),
-                    min_max(v + offset, 0, self.lowest),
+                    fmt.min_max(v + offset, 0, self.lowest),
                     100,
                 )
                 for v in data
@@ -1004,9 +1019,9 @@ class Graph:
             for n in range(self.height):
                 self.graphs[self.current][n] = self.graphs[self.current][n][1:]
         if self.max_value:
-            value = min_max(
+            value = fmt.min_max(
                 (value + self.offset) * 100 // (self.max_value + self.offset),
-                min_max(value + self.offset, 0, self.lowest),
+                fmt.min_max(value + self.offset, 0, self.lowest),
                 100,
             )
         self._create([value])
@@ -1565,7 +1580,7 @@ class CpuBox(Box, SubBox):
             try:
                 temp, unit = temperature(cpu.cpu_temp[0][-1], CONFIG.temp_scale)
                 out += (
-                    f'{THEME.inactive_fg} ⡀⡀⡀⡀⡀{Mv.l(5)}{THEME.gradient["temp"][min_max(cpu.cpu_temp[0][-1], 0, cpu.cpu_temp_crit) * 100 // cpu.cpu_temp_crit]}{Graphs.temps[0](None if cls.resized else cpu.cpu_temp[0][-1])}'
+                    f'{THEME.inactive_fg} ⡀⡀⡀⡀⡀{Mv.l(5)}{THEME.gradient["temp"][fmt.min_max(cpu.cpu_temp[0][-1], 0, cpu.cpu_temp_crit) * 100 // cpu.cpu_temp_crit]}{Graphs.temps[0](None if cls.resized else cpu.cpu_temp[0][-1])}'
                     f"{temp:>4}{THEME.main_fg}{unit}"
                 )
             except:
@@ -1583,9 +1598,9 @@ class CpuBox(Box, SubBox):
                 try:
                     temp, unit = temperature(cpu.cpu_temp[n][-1], CONFIG.temp_scale)
                     if cls.column_size > 1:
-                        out += f'{THEME.inactive_fg} ⡀⡀⡀⡀⡀{Mv.l(5)}{THEME.gradient["temp"][min_max(cpu.cpu_temp[n][-1], 0, cpu.cpu_temp_crit) * 100 // cpu.cpu_temp_crit]}{Graphs.temps[n](None if cls.resized else cpu.cpu_temp[n][-1])}'
+                        out += f'{THEME.inactive_fg} ⡀⡀⡀⡀⡀{Mv.l(5)}{THEME.gradient["temp"][fmt.min_max(cpu.cpu_temp[n][-1], 0, cpu.cpu_temp_crit) * 100 // cpu.cpu_temp_crit]}{Graphs.temps[n](None if cls.resized else cpu.cpu_temp[n][-1])}'
                     else:
-                        out += f'{THEME.gradient["temp"][min_max(temp, 0, cpu.cpu_temp_crit) * 100 // cpu.cpu_temp_crit]}'
+                        out += f'{THEME.gradient["temp"][fmt.min_max(temp, 0, cpu.cpu_temp_crit) * 100 // cpu.cpu_temp_crit]}'
                     out += f"{temp:>4}{THEME.main_fg}{unit}"
                 except:
                     cpu.got_sensors = False
@@ -2845,7 +2860,7 @@ class ProcBox(Box):
                 + (
                     (f"{mem:>4.1f}" if mem < 100 else f"{mem:>4.0f} ")
                     if not CONFIG.proc_mem_bytes
-                    else f"{floating_humanizer(mem_b, short=True):>4.4}"
+                    else f"{fmt.floating_humanizer(mem_b, short=True):>4.4}"
                 )
                 + end
                 + f' {THEME.inactive_fg}{"⡀"*5}{THEME.main_fg}{g_color}{c_color}'
@@ -3351,9 +3366,9 @@ def process_keys():
 # ? Pre main -------------------------------------------------------------------------------------->
 
 
-CPU_NAME: str = get_cpu_name()
+CPU_NAME: str = platform.get_cpu_name()
 
-CORE_MAP: List[int] = get_cpu_core_mapping()
+CORE_MAP: List[int] = platform.get_cpu_core_mapping()
 
 THEME: Theme
 
